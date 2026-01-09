@@ -48,3 +48,45 @@ export interface WalletAnalysisData {
   firstConversionDate: string | null;
   lastConversionDate: string | null;
 }
+
+// Discipline Rule Types
+export interface SimulatedConversion {
+  timestamp: string;
+  amount: number;
+  priceAtConversion: number;
+  convertedTo: string;
+}
+
+export interface SimulationResult {
+  simulatedConversions: SimulatedConversion[];
+  conversionPercentage: number;
+  targetDayOfMonth: number;
+  totalSimulatedAmount: number;
+  averageSimulatedAmount: number;
+}
+
+// Cost Calculator Types
+export interface CostResult {
+  costOrSavedAmount: number;
+  currency: string;
+  costType: 'saved' | 'lost';
+  actualCost: number;
+  simulatedCost: number;
+  conversionCount: number;
+}
+
+// Discipline Score Types
+export interface ScoreResult {
+  score: number;
+  explanation: string;
+  components: {
+    frequencyScore: number;
+    consistencyScore: number;
+    timingScore: number;
+  };
+}
+
+// Recommendation Types
+export interface RecommendationResult {
+  recommendation: string;
+}
