@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import ResultCard from '@/components/ResultCard';
 import Disclaimer from '@/components/Disclaimer';
+import PaywallCTA from '@/components/PaywallCTA';
+import Link from 'next/link';
 
 interface ResultData {
   costOrSavedAmount: number;
   disciplineScore: number;
   recommendation: string;
+  previewVisible: boolean;
+  email: string;
+  subscriptionStatus: string | null;
 }
 
-export default function ResultsPage({ params }: { params: { analysisId: string } }) {
+export default function ResultsPage({ params }: { params: Promise<{ analysisId: string }> }) {
+  const { analysisId } = use(params);
   const [resultData, setResultData] = useState<ResultData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +27,23 @@ export default function ResultsPage({ params }: { params: { analysisId: string }
         setIsLoading(true);
         setError(null);
         
+        // Check if results exist first
+        const getResponse = await fetch(`/api/wallet/results?analysisId=${analysisId}`);
+        
+        if (getResponse.ok) {
+          const existingResults = await getResponse.json();
+          setResultData({
+            costOrSavedAmount: existingResults.data.costOrSavedAmount,
+            disciplineScore: existingResults.data.disciplineScore,
+            recommendation: existingResults.data.recommendation,
+            previewVisible: existingResults.data.previewVisible,
+            email: existingResults.data.email,
+            subscriptionStatus: existingResults.data.subscriptionStatus
+          });
+          setIsLoading(false);
+          return;
+        }
+
         // Calculate and store results by calling the POST endpoint
         const calculateResponse = await fetch('/api/wallet/results', {
           method: 'POST',
@@ -28,7 +51,7 @@ export default function ResultsPage({ params }: { params: { analysisId: string }
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            analysisId: params.analysisId,
+            analysisId: analysisId,
             walletBalance: 10000, // This would come from the user's wallet in production
             targetCurrency: 'USD' // This would come from the analysis data
           })
@@ -39,13 +62,17 @@ export default function ResultsPage({ params }: { params: { analysisId: string }
           throw new Error(errorData.error || 'Failed to calculate results');
         }
         
-        const calculationResult = await calculateResponse.json();
-        
-        // Use the results from the POST response directly
+        // After calculation, fetch again to get all fields including email
+        const refreshResponse = await fetch(`/api/wallet/results?analysisId=${analysisId}`);
+        const refreshedData = await refreshResponse.json();
+
         setResultData({
-          costOrSavedAmount: calculationResult.data.costOrSavedAmount,
-          disciplineScore: calculationResult.data.disciplineScore,
-          recommendation: calculationResult.data.recommendation
+          costOrSavedAmount: refreshedData.data.costOrSavedAmount,
+          disciplineScore: refreshedData.data.disciplineScore,
+          recommendation: refreshedData.data.recommendation,
+          previewVisible: refreshedData.data.previewVisible,
+          email: refreshedData.data.email,
+          subscriptionStatus: refreshedData.data.subscriptionStatus
         });
         
       } catch (err) {
@@ -57,40 +84,70 @@ export default function ResultsPage({ params }: { params: { analysisId: string }
     };
     
     fetchResults();
-  }, [params.analysisId]);
+  }, [analysisId]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
       <div className="w-full max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-          Your Wallet Analysis Results
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Your Wallet Analysis Results
+          </h1>
+          {resultData?.subscriptionStatus === 'active' && (
+            <Link 
+              href={`/api/stripe/customer-portal?email=${resultData.email}`} 
+              className="text-sm text-blue-600 hover:underline font-medium"
+            >
+              Manage Subscription
+            </Link>
+          )}
+        </div>
 
         {resultData && (
-          <ResultCard
-            costOrSavedAmount={resultData.costOrSavedAmount}
-            currency="USD"
-            costType={resultData.costOrSavedAmount >= 0 ? 'saved' : 'lost'}
-            disciplineScore={resultData.disciplineScore}
-            recommendation={resultData.recommendation}
-            isLoading={isLoading}
-            error={error}
-          />
+          <>
+            <ResultCard
+              costOrSavedAmount={resultData.costOrSavedAmount}
+              currency="USD"
+              costType={resultData.costOrSavedAmount >= 0 ? 'saved' : 'lost'}
+              disciplineScore={resultData.disciplineScore}
+              recommendation={resultData.recommendation}
+              isLoading={isLoading}
+              error={error}
+              previewVisible={resultData.previewVisible}
+            />
+            {!resultData.previewVisible && (
+              <PaywallCTA analysisId={analysisId} email={resultData.email} />
+            )}
+          </>
         )}
 
-        {!resultData && !isLoading && !error && (
+        {isLoading && !resultData && (
           <ResultCard
             costOrSavedAmount={0}
             currency="USD"
             costType="saved"
             disciplineScore={0}
             recommendation=""
-            isLoading={isLoading}
+            isLoading={true}
+            error={null}
+          />
+        )}
+
+        {error && !resultData && (
+          <ResultCard
+            costOrSavedAmount={0}
+            currency="USD"
+            costType="saved"
+            disciplineScore={0}
+            recommendation=""
+            isLoading={false}
             error={error}
           />
         )}
 
-        <Disclaimer />
+        <div className="mt-8">
+          <Disclaimer />
+        </div>
       </div>
     </main>
   );

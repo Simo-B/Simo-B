@@ -45,7 +45,7 @@ export default function WalletForm() {
           walletAddress: formData.walletAddress,
           blockchain: formData.blockchain,
           currency: formData.currency,
-          userId: 'temp-user-id' // In production, this would be the authenticated user ID
+          email: formData.email
         })
       });
       

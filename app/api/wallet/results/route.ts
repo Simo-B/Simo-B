@@ -123,6 +123,15 @@ export async function POST(request: NextRequest) {
     // Generate recommendation
     const recommendationResult = generateRecommendation(costResult, scoreResult);
     
+    // Check user's subscription status to decide if preview should be visible
+    const { data: userData } = await supabase
+      .from('users')
+      .select('subscription_status')
+      .eq('id', analysis.user_id)
+      .single();
+
+    const isSubscribed = userData?.subscription_status === 'active';
+
     // Store results in analysis_results table
     const { data: resultRecord, error: insertError } = await supabase
       .from('analysis_results')
@@ -131,7 +140,7 @@ export async function POST(request: NextRequest) {
         cost_saved_or_lost: costResult.costOrSavedAmount,
         discipline_score: scoreResult.score,
         recommendation: recommendationResult.recommendation,
-        preview_visible: true,
+        preview_visible: isSubscribed,
       })
       .select()
       .single();
@@ -208,10 +217,10 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Fetch results
+    // Fetch results and join with analyses and users to get email and status
     const { data: results, error: resultsError } = await supabase
       .from('analysis_results')
-      .select('*')
+      .select('*, analyses(user_id, users(email, subscription_status))')
       .eq('analysis_id', analysisId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -224,6 +233,11 @@ export async function GET(request: NextRequest) {
       );
     }
     
+    // @ts-ignore - Supabase join types can be complex
+    const userEmail = results.analyses?.users?.email;
+    // @ts-ignore
+    const subscriptionStatus = results.analyses?.users?.subscription_status;
+    
     return NextResponse.json({
       data: {
         analysisId,
@@ -232,6 +246,8 @@ export async function GET(request: NextRequest) {
         recommendation: results.recommendation,
         createdAt: results.created_at,
         previewVisible: results.preview_visible,
+        email: userEmail,
+        subscriptionStatus: subscriptionStatus,
       },
     }, { status: 200 });
     

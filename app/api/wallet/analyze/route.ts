@@ -21,14 +21,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { walletAddress, blockchain, currency, userId } = await request.json();
+    const { walletAddress, blockchain, currency, email } = await request.json();
 
     // Validate required fields
-    if (!walletAddress || !blockchain || !currency || !userId) {
+    if (!walletAddress || !blockchain || !currency || !email) {
       return NextResponse.json(
-        { error: 'Wallet address, blockchain, currency, and userId are required' },
+        { error: 'Wallet address, blockchain, currency, and email are required' },
         { status: 400 }
       );
+    }
+
+    // Find or create user by email
+    let userId;
+    const { data: existingUser, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    
+    if (userError) {
+        console.error('Error fetching user:', userError);
+    }
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({ email })
+        .select('id')
+        .single();
+      
+      if (createError) {
+        return NextResponse.json(
+          { error: `Failed to create user: ${createError.message}` },
+          { status: 500 }
+        );
+      }
+      userId = newUser.id;
     }
 
     // Validate wallet address format

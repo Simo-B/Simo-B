@@ -10,6 +10,7 @@ interface ResultCardProps {
   recommendation: string;
   isLoading: boolean;
   error: string | null;
+  previewVisible?: boolean;
 }
 
 export default function ResultCard({
@@ -19,7 +20,8 @@ export default function ResultCard({
   disciplineScore,
   recommendation,
   isLoading,
-  error
+  error,
+  previewVisible = false
 }: ResultCardProps) {
   const router = useRouter();
 
@@ -74,17 +76,25 @@ export default function ResultCard({
           Last month, your decisions
         </h2>
         <div className="mb-4">
-          <span className="text-5xl font-bold text-gray-900">
-            {currency === 'USD' ? '$' : '€'}{Math.abs(costOrSavedAmount).toFixed(2)}
+          <span className={`text-5xl font-bold text-gray-900 ${!previewVisible ? 'blur-md select-none' : ''}`}>
+            {currency === 'USD' ? '$' : '€'}{previewVisible ? Math.abs(costOrSavedAmount).toFixed(2) : '***.**'}
           </span>
         </div>
         <div className={`text-xl font-medium ${costType === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
           {costType === 'saved' ? 'saved' : 'cost'} you
         </div>
+        {!previewVisible && (
+          <button 
+            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+            className="mt-4 text-sm text-blue-600 font-semibold uppercase tracking-wide hover:text-blue-800 transition-colors"
+          >
+            Unlock full number
+          </button>
+        )}
       </div>
 
       {/* Discipline Score */}
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 border-t pt-8">
         <h3 className="text-xl font-semibold text-gray-800 mb-2">Discipline Score</h3>
         <div className="text-4xl font-bold text-gray-900 mb-2">
           {disciplineScore}/100
@@ -103,13 +113,15 @@ export default function ResultCard({
         <p className="text-gray-600">{recommendation}</p>
       </div>
 
-      {/* Back Button */}
-      <button
-        onClick={handleBack}
-        className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        Back to analyze another wallet
-      </button>
+      {/* Back Button - Only show if subscribed or it's at the very bottom */}
+      {previewVisible && (
+        <button
+          onClick={handleBack}
+          className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          Back to analyze another wallet
+        </button>
+      )}
     </div>
   );
 }
