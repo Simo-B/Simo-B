@@ -25,3 +25,26 @@ export interface AnalysisResult {
   recommendation: string | null;
   preview_visible: boolean;
 }
+
+export interface ConversionEvent {
+  timestamp: string;
+  amount: number;
+  token: string;
+  toAddress: string;
+  hash: string;
+}
+
+export type FrequencyPattern = 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'irregular' | 'insufficient-data';
+
+export interface WalletAnalysisData {
+  analysis: Analysis;
+  transferCount: number;
+  conversions: ConversionEvent[];
+  totalConversions: number;
+  frequency: FrequencyPattern;
+  averageAmount: number;
+  totalVolume: number;
+  averageDaysBetweenConversions: number | null;
+  firstConversionDate: string | null;
+  lastConversionDate: string | null;
+}
