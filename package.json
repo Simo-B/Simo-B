@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "validate:env": "tsx scripts/validate-env.ts",
+    "setup:stripe-webhook": "tsx scripts/setup-stripe-webhook.ts",
+    "setup:supabase": "tsx scripts/setup-supabase.ts",
+    "validate:deployment": "tsx scripts/validate-deployment.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
@@ -20,11 +24,15 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.11.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.6.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "pg": "^8.13.6",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }
