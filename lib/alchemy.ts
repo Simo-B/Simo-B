@@ -90,7 +90,6 @@ export async function fetchStablecoinTransfers(
   // Calculate timestamp for 90 days ago
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  const ninetyDaysAgoHex = `0x${Math.floor(ninetyDaysAgo.getTime() / 1000).toString(16)}`;
 
   // Fetch transfers TO the wallet
   const transfersTo = await alchemy.core.getAssetTransfers({

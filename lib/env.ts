@@ -1,10 +1,14 @@
-export function validateEnvVars() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export function getRequiredEnvVar(name: string): string {
+  const value = process.env[name];
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      'Missing required environment variables. Please check your .env.local file.'
-    );
+  if (!value) {
+    throw new Error(`${name} is not configured`);
   }
+
+  return value;
+}
+
+export function validateEnvVars(): void {
+  getRequiredEnvVar('NEXT_PUBLIC_SUPABASE_URL');
+  getRequiredEnvVar('NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
