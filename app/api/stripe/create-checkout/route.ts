@@ -24,6 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const stripe = getStripeClient();
     const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
         {
@@ -31,10 +32,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           quantity: 1,
         },
       ],
-      mode: 'subscription',
       success_url: `${request.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${request.nextUrl.origin}/cancel`,
       client_reference_id: userId,
+      metadata: {
+        userId,
+      },
+      subscription_data: {
+        metadata: {
+          userId,
+        },
+      },
     });
 
     return NextResponse.json({ sessionId: session.id }, { status: 200 });

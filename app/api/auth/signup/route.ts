@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseAdminClient, supabase } from '@/lib/supabase';
 import { validateEnvVars } from '@/lib/env';
 
 export async function POST(request: NextRequest) {
@@ -8,10 +8,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -24,11 +21,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.user) {
-      const { error: dbError } = await supabase.from('users').insert({
-        id: data.user.id,
-        email: data.user.email,
-        subscription_status: 'free',
-      });
+      const db = process.env.SUPABASE_SERVICE_ROLE_KEY ? getSupabaseAdminClient() : supabase;
+
+      const { error: dbError } = await db.from('users').upsert(
+        {
+          id: data.user.id,
+          email: data.user.email,
+          subscription_status: 'free',
+        },
+        {
+          onConflict: 'id',
+        }
+      );
 
       if (dbError) {
         return NextResponse.json({ error: dbError.message }, { status: 500 });
@@ -37,9 +41,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data }, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
