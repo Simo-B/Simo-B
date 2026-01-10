@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { validateWalletForm, type WalletFormData, type SupportedChain, type SupportedCurrency } from '@/lib/forms';
+
+import {
+  validateWalletForm,
+  type SupportedChain,
+  type SupportedCurrency,
+  type WalletFormData,
+} from '@/lib/forms';
 
 export default function WalletForm() {
   const router = useRouter();
@@ -10,32 +16,32 @@ export default function WalletForm() {
     walletAddress: '',
     blockchain: 'ethereum',
     currency: 'USD',
-    email: ''
+    email: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);
-    
-    // Validate form
+
     const validation = validateWalletForm(formData);
     if (!validation.valid) {
       setErrors(validation.errors);
       setIsLoading(false);
       return;
     }
-    
+
     try {
-      // Call the analyze API
       const response = await fetch('/api/wallet/analyze', {
         method: 'POST',
         headers: {
@@ -45,29 +51,43 @@ export default function WalletForm() {
           walletAddress: formData.walletAddress,
           blockchain: formData.blockchain,
           currency: formData.currency,
-          userId: 'temp-user-id' // In production, this would be the authenticated user ID
-        })
+          userId: 'temp-user-id',
+        }),
       });
-      
+
+      const json = (await response.json()) as unknown;
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to analyze wallet');
+        const errorMessage =
+          typeof (json as { error?: unknown }).error === 'string'
+            ? (json as { error: string }).error
+            : 'Failed to analyze wallet';
+        throw new Error(errorMessage);
       }
-      
-      const result = await response.json();
-      const analysisId = result.data.analysis.id;
-      
-      // Redirect to results page with the analysis ID
+
+      const analysisId = (json as { data?: { analysis?: { id?: unknown } } }).data
+        ?.analysis?.id;
+
+      if (typeof analysisId !== 'string' || analysisId.length === 0) {
+        throw new Error('Unexpected API response: missing analysis id');
+      }
+
       router.push(`/results/${analysisId}`);
-      
-    } catch (error) {
-      console.error('Analysis error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to analyze wallet');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to analyze wallet';
+      setErrorMessage(message);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const supportedChains: SupportedChain[] = ['ethereum', 'polygon', 'arbitrum', 'optimism', 'base'];
+  const supportedChains: SupportedChain[] = [
+    'ethereum',
+    'polygon',
+    'arbitrum',
+    'optimism',
+    'base',
+  ];
   const supportedCurrencies: SupportedCurrency[] = ['EUR', 'USD'];
 
   return (

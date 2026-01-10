@@ -1,30 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { supabase } from '@/lib/supabase';
+import type Stripe from 'stripe';
+
 import { validateEnvVars } from '@/lib/env';
+import { getStripeClient, getStripeWebhookSecret } from '@/lib/stripe';
+import { supabase } from '@/lib/supabase';
 
-function getStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new Error('STRIPE_SECRET_KEY is not configured');
-  }
-  return new Stripe(secretKey, {
-    apiVersion: '2025-12-15.clover',
-  });
-}
+export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     validateEnvVars();
-    const stripe = getStripeClient();
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
-    if (!webhookSecret) {
-      return NextResponse.json(
-        { error: 'Webhook secret not configured' },
-        { status: 500 }
-      );
-    }
+    const stripe = getStripeClient();
+    const webhookSecret = getStripeWebhookSecret();
 
     const body = await request.text();
     const signature = request.headers.get('stripe-signature');
@@ -40,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Invalid signature';
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Invalid signature';
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
@@ -56,16 +44,17 @@ export async function POST(request: NextRequest) {
           .eq('id', userId);
 
         if (error) {
-          console.error('Error updating subscription status:', error);
+          return NextResponse.json(
+            { error: 'Failed to update subscription status' },
+            { status: 500 }
+          );
         }
       }
     }
 
     return NextResponse.json({ received: true }, { status: 200 });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
